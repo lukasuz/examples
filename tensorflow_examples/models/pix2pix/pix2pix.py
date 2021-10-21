@@ -365,7 +365,7 @@ def unet_generator_dual(gen_channels, disc_channels, norm_type='batchnorm'):
   last_disc = tf.keras.layers.Conv2DTranspose(
       disc_channels, 4, strides=2,
       padding='same', kernel_initializer=initializer,
-      activation='sigmoid')  # (bs, 256, 256, 3)
+      activation='sigmoid')  # (bs, 256, 256, 1)
 
   concat = tf.keras.layers.Concatenate()
 
@@ -382,19 +382,19 @@ def unet_generator_dual(gen_channels, disc_channels, norm_type='batchnorm'):
   x_disc = x
   skips = reversed(skips[:-1])
 
-  # Upsampling and establishing the skip connections for gen path
-  for up, skip in zip(up_stack_gen, skips):
-    x_gen = up(x_gen)
+  # Upsampling and establishing the skip connections
+  for up_gen, up_disc, skip in zip(up_stack_gen, up_stack_disc, skips):
+    # Gen path
+    x_gen = up_gen(x_gen)
     x_gen = concat([x_gen, skip])
 
-  out_gen = last_gen(x_gen)
-
-  # Upsampling and establishing the skip connections for disc path
-  for up, skip in zip(up_stack_disc, skips):
-    x_disc = up(x_disc)
+    # Disc path
+    x_disc = up_disc(x_disc)
     x_disc = concat([x_disc, skip])
 
+  out_gen = last_gen(x_gen)
   out_disc = last_disc(x_disc)
+
 
   return tf.keras.Model(inputs=inputs, outputs=[out_gen, out_disc])
 
