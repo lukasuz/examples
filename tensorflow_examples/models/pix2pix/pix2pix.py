@@ -314,7 +314,7 @@ def unet_generator(output_channels, norm_type='batchnorm'):
 
   return tf.keras.Model(inputs=inputs, outputs=x)
 
-def unet_generator_dual(output_channels, norm_type='batchnorm'):
+def unet_generator_dual(gen_channels, disc_channels, norm_type='batchnorm'):
   """Modified u-net generator model (https://arxiv.org/abs/1611.07004).
 
   Args:
@@ -358,12 +358,12 @@ def unet_generator_dual(output_channels, norm_type='batchnorm'):
 
   initializer = tf.random_normal_initializer(0., 0.02)
   last_gen = tf.keras.layers.Conv2DTranspose(
-      output_channels, 4, strides=2,
+      gen_channels, 4, strides=2,
       padding='same', kernel_initializer=initializer,
       activation='tanh')  # (bs, 256, 256, 3)
   
   last_disc = tf.keras.layers.Conv2DTranspose(
-      output_channels, 4, strides=2,
+      disc_channels, 4, strides=2,
       padding='same', kernel_initializer=initializer,
       activation='sigmoid')  # (bs, 256, 256, 3)
 
