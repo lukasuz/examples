@@ -467,7 +467,8 @@ def unet_generator_v3(gen_channels, norm_type='batchnorm'):
 
       out_disc = tf.keras.layers.Conv2D(
           1, 4, strides=1,
-          kernel_initializer=initializer)(zero_pad2)  # (bs, 30, 30, 1)
+          kernel_initializer=initializer,
+          activation='sigmoid')(zero_pad2)  # (bs, 30, 30, 1)
   
   # x_gen = x
   skips = reversed(skips[:-1])
@@ -673,4 +674,5 @@ def main(epochs, enable_function, path, buffer_size, batch_size):
 
 if __name__ == '__main__':
   app.run(run_main)
-  
+  # a = unet_generator_v3(3, 'instancenorm')
+  # print(a.summary())
