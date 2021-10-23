@@ -399,7 +399,7 @@ def unet_generator_dual(gen_channels, disc_channels, norm_type='batchnorm'):
   return tf.keras.Model(inputs=inputs, outputs=[out_gen, out_disc])
 
 
-def unet_generator_v3(gen_channels, disc_channels, norm_type='batchnorm'):
+def unet_generator_v3(gen_channels, norm_type='batchnorm'):
   """Modified u-net generator model (https://arxiv.org/abs/1611.07004).
 
   Args:
@@ -444,44 +444,40 @@ def unet_generator_v3(gen_channels, disc_channels, norm_type='batchnorm'):
 
   # Downsampling through the model
   skips = []
-  for down in down_stack:
+  for i in range(len(down_stack)):
+    down = down_stack[i]
     x = down(x)
     skips.append(x)
+
+    # Discriminator
+    if i == 2: # equivalent to down3
+      zero_pad1 = tf.keras.layers.ZeroPadding2D()(x)  # (bs, 34, 34, 256)
+      conv = tf.keras.layers.Conv2D(
+          512, 4, strides=1, kernel_initializer=initializer,
+          use_bias=False)(zero_pad1)  # (bs, 31, 31, 512)
+
+      if norm_type.lower() == 'batchnorm':
+        norm1 = tf.keras.layers.BatchNormalization()(conv)
+      elif norm_type.lower() == 'instancenorm':
+        norm1 = InstanceNormalization()(conv)
+
+      leaky_relu = tf.keras.layers.LeakyReLU()(norm1)
+
+      zero_pad2 = tf.keras.layers.ZeroPadding2D()(leaky_relu)  # (bs, 33, 33, 512)
+
+      out_disc = tf.keras.layers.Conv2D(
+          1, 4, strides=1,
+          kernel_initializer=initializer)(zero_pad2)  # (bs, 30, 30, 1)
   
-  x_gen = x
+  # x_gen = x
   skips = reversed(skips[:-1])
 
   # Upsampling
-  for i in range(len(up_stack_gen)):
-    up_gen = up_stack_gen[i]
-    skip = skips[i]
-    x_gen = up_gen(x_gen)
-    x_gen = concat([x_gen, skip])
+  for up, skip in zip(up_stack_gen, skips):
+    x = up(x)
+    x = concat([x, skip])
 
-  out_gen = last_gen(x_gen)
-
-  # Discriminator
-  down3 = down_stack[2] # equivalent to down3
-  zero_pad1 = tf.keras.layers.ZeroPadding2D()(down3)  # (bs, 34, 34, 256)
-  conv = tf.keras.layers.Conv2D(
-      512, 4, strides=1, kernel_initializer=initializer,
-      use_bias=False)(zero_pad1)  # (bs, 31, 31, 512)
-
-  if norm_type.lower() == 'batchnorm':
-    norm1 = tf.keras.layers.BatchNormalization()(conv)
-  elif norm_type.lower() == 'instancenorm':
-    norm1 = InstanceNormalization()(conv)
-
-  leaky_relu = tf.keras.layers.LeakyReLU()(norm1)
-
-  zero_pad2 = tf.keras.layers.ZeroPadding2D()(leaky_relu)  # (bs, 33, 33, 512)
-
-  out_disc = tf.keras.layers.Conv2D(
-      1, 4, strides=1,
-      kernel_initializer=initializer)(zero_pad2)  # (bs, 30, 30, 1)
-
-
-
+  out_gen = last_gen(x)
 
   return tf.keras.Model(inputs=inputs, outputs=[out_gen, out_disc])
 
@@ -677,3 +673,4 @@ def main(epochs, enable_function, path, buffer_size, batch_size):
 
 if __name__ == '__main__':
   app.run(run_main)
+  
